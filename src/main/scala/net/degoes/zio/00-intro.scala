@@ -40,15 +40,21 @@ object ZIOModel {
    * Implement all missing methods on the ZIO companion object.
    */
   object ZIO {
-    def succeed[A](a: => A): ZIO[Any, Nothing, A] = ???
+    def succeed[A](a: => A): ZIO[Any, Nothing, A] = ZIO(_ => Right(a))
 
-    def fail[E](e: => E): ZIO[Any, E, Nothing] = ???
+    def fail[E](e: => E): ZIO[Any, E, Nothing] = ZIO(_ => Left(e))
 
-    def effect[A](sideEffect: => A): ZIO[Any, Throwable, A] = ???
+    def effect[A](sideEffect: => A): ZIO[Any, Throwable, A] =
+      ZIO { _ =>
+        try (Right(sideEffect))
+        catch {
+          case t: Throwable => Left(t)
+        }
+      }
 
-    def environment[R]: ZIO[R, Nothing, R] = ???
+    def environment[R]: ZIO[R, Nothing, R] = ZIO(r => Right(r))
 
-    def access[R, A](f: R => A): ZIO[R, Nothing, A] = ???
+    def access[R, A](f: R => A): ZIO[R, Nothing, A] = ZIO(r => Right(f(r)))
 
     def accessM[R, E, A](f: R => ZIO[R, E, A]): ZIO[R, E, A] = ???
   }
@@ -90,9 +96,7 @@ object ZIOModel {
    */
   def main(args: Array[String]): Unit =
     unsafeRun {
-      putStrLn("Hello, what is your name?").flatMap(
-        _ => readLine.flatMap(name => putStrLn(s"Your name is: ${name}"))
-      )
+      putStrLn("Hello, what is your name?").flatMap(_ => readLine.flatMap(name => putStrLn(s"Your name is: ${name}")))
     }
 }
 
@@ -286,8 +290,8 @@ object ForComprehension extends App {
    * except for the final line, which will be translated into a `map`.
    */
   def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] =
-    putStrLn("What is your name?").flatMap(
-      _ => readLine.flatMap(name => putStrLn(s"Your name is: ${name}").map(_ => ExitCode.success))
+    putStrLn("What is your name?").flatMap(_ =>
+      readLine.flatMap(name => putStrLn(s"Your name is: ${name}").map(_ => ExitCode.success))
     )
 }
 
